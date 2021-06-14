@@ -23,6 +23,7 @@ import logging
 from tqdm import tqdm
 from sciwing.utils.common import cached_path
 from typing import Union
+import torch
 
 PATHS = constants.PATHS
 MODELS_CACHE_DIR = PATHS["MODELS_CACHE_DIR"]

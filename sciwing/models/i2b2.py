@@ -1,6 +1,5 @@
 from sciwing.utils.vis_seq_tags import VisTagging
 from sciwing.modules.embedders.trainable_word_embedder import TrainableWordEmbedder
-from sciwing.modules.embedders.char_embedder import CharEmbedder
 from sciwing.modules.embedders.bow_elmo_embedder import BowElmoEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
 from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
@@ -14,7 +13,10 @@ from sciwing.utils.common import cached_path
 import sciwing.constants as constants
 import pathlib
 import json
+import torch
 import torch.nn as nn
+from logzero import setup_logger
+import logging
 import wasabi
 from typing import List
 from collections import defaultdict
