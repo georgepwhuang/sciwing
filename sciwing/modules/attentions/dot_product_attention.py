@@ -29,7 +29,7 @@ class DotProductAttention(nn.Module, ClassNursery):
         query_matrix_new_dimension = query_matrix.unsqueeze(-1)
 
         # (batch_size, max_number_time_steps, 1)
-        attention = torch.bmm(key_matrix, query_matrix_new_dimension)
+        attention = torch.matmul(key_matrix, query_matrix_new_dimension)
 
         # (batch_size, max_number_of_time_steps)
         attention = attention.squeeze(-1)
