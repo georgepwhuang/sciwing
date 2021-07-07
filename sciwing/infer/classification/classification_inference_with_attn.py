@@ -307,6 +307,7 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
         LineWithContext
 
         """
+        lines = lines.copy()
         lines.insert(0, "<<<begin>")
         lines.append("<<<end>>>")
         lines_ = [LineWithContext(text=lines[i], context=[lines[i-1], lines[i+1]],
