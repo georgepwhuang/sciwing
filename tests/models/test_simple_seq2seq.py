@@ -1,11 +1,11 @@
 import pytest
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
-from sciwing.modules.lstm2seqdecoder import Lstm2SeqDecoder
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.encoders.lstm2seqdecoder import Lstm2SeqDecoder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.datasets.summarization.abstractive_text_summarization_dataset import (
     AbstractiveSummarizationDatasetManager,
 )
-from sciwing.models.simple_seq2seq import Seq2SeqModel
+from sciwing.modules.deployment.simple_seq2seq import Seq2SeqModel
 
 
 @pytest.fixture(scope="session")

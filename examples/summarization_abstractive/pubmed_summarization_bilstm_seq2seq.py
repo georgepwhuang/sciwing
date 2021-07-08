@@ -1,12 +1,10 @@
 from sciwing.datasets.summarization.abstractive_text_summarization_dataset import (
     AbstractiveSummarizationDatasetManager,
 )
-from sciwing.modules.embedders.bow_elmo_embedder import BowElmoEmbedder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
-from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
-from sciwing.modules.lstm2seqdecoder import Lstm2SeqDecoder
-from sciwing.models.simple_seq2seq import Seq2SeqModel
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.encoders.lstm2seqdecoder import Lstm2SeqDecoder
+from sciwing.modules.deployment.simple_seq2seq import Seq2SeqModel
 import pathlib
 from sciwing.metrics.summarization_metrics import SummarizationMetrics
 import torch.optim as optim

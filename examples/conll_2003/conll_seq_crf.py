@@ -3,8 +3,8 @@ import sciwing.constants as constants
 import pathlib
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.preprocessing.instance_preprocessing import InstancePreprocessing
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
-from sciwing.models.rnn_seq_crf_tagger import RnnSeqCrfTagger
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.deployment.rnn_seq_crf_tagger import RnnSeqCrfTagger
 import argparse
 import wasabi
 import torch

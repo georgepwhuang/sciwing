@@ -1,7 +1,6 @@
-import os
 import sciwing.constants as constants
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.infer.classification.classification_inference import (
     ClassificationInference,
@@ -28,7 +27,7 @@ class BuildGenericSectBiLSTMInfer(BaseInterfaceClient):
     def build_model(self):
         embedder = WordEmbedder(embedding_type=self.hparams.get("embedding_type"))
 
-        encoder = LSTM2VecEncoder(
+        encoder = Lstm2VecEncoder(
             embedder=embedder,
             hidden_dim=self.hparams.get("hidden_dim"),
             combine_strategy=self.hparams.get("combine_strategy"),

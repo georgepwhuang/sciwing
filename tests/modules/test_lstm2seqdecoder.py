@@ -1,10 +1,7 @@
 import pytest
-from sciwing.modules.lstm2seqdecoder import Lstm2SeqDecoder
+from sciwing.modules.encoders.lstm2seqdecoder import Lstm2SeqDecoder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.modules.attentions.dot_product_attention import DotProductAttention
-from sciwing.datasets.summarization.abstractive_text_summarization_dataset import (
-    AbstractiveSummarizationDatasetManager,
-)
 from sciwing.data.line import Line
 import itertools
 import torch

@@ -14,7 +14,7 @@ if not PDF_CACHE_DIR.is_dir():
 
 router = APIRouter()
 pdf_store = PdfStore(PDF_CACHE_DIR)
-PDF_BOX_JAR = BIN_FOLDER.joinpath("pdfbox-app-2.0.16.jar")
+PDF_BOX_JAR = BIN_FOLDER.joinpath("pdfbox-app-2.0.24.jar")
 processing_pipeline = None
 
 

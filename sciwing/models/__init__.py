@@ -1,2 +1,1 @@
-from sciwing.models.simpleclassifier import SimpleClassifier
-from sciwing.models.rnn_seq_crf_tagger import RnnSeqCrfTagger
+

@@ -1,9 +1,7 @@
-import json
-import os
 import sciwing.constants as constants
 from sciwing.modules.embedders.bert_embedder import BertEmbedder
-from sciwing.modules.bow_encoder import BOW_Encoder
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.encoders.bow_encoder import BOW_Encoder
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )

@@ -2,8 +2,8 @@ from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )
 from sciwing.modules.embedders.bow_elmo_embedder import BowElmoEmbedder
-from sciwing.modules.bow_encoder import BOW_Encoder
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.encoders.bow_encoder import BOW_Encoder
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.metrics.precision_recall_fmeasure import PrecisionRecallFMeasure
 import sciwing.constants as constants
 import torch.optim as optim

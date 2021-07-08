@@ -4,8 +4,8 @@ import pathlib
 from sciwing.modules.embedders.trainable_word_embedder import TrainableWordEmbedder
 from sciwing.modules.embedders.char_embedder import CharEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
-from sciwing.models.simple_tagger import SimpleTagger
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.deployment.simple_tagger import SimpleTagger
 import argparse
 import wasabi
 import torch

@@ -1,5 +1,5 @@
 import pytest
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.data.line import Line
 import itertools

@@ -14,7 +14,7 @@
     num_classes=23
     classification_layer_bias=true
     [model.encoder]
-        class="LSTM2VecEncoder"
+        class="Lstm2VecEncoder"
         dropout_value = 0.5
         hidden_dim=100
         combine_strategy="concat"

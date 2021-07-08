@@ -1,16 +1,15 @@
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )
 import sciwing.constants as constants
-from sciwing.modules.bow_encoder import BOW_Encoder
+from sciwing.modules.encoders.bow_encoder import BOW_Encoder
 from sciwing.metrics.precision_recall_fmeasure import PrecisionRecallFMeasure
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 import torch.optim as optim
 from sciwing.engine.engine import Engine
 import argparse
 import pathlib
-import torch
 
 PATHS = constants.PATHS
 DATA_DIR = PATHS["DATA_DIR"]

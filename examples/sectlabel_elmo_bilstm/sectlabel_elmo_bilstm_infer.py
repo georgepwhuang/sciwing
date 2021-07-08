@@ -2,8 +2,8 @@ import sciwing.constants as constants
 from sciwing.modules.embedders.bow_elmo_embedder import BowElmoEmbedder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
-from sciwing.models.simpleclassifier import SimpleClassifier
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
 from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )
@@ -44,7 +44,7 @@ def build_sectlabel_elmobilstm_model(dirname: str):
 
     embedders = ConcatEmbedders([vanilla_embedder, elmo_embedder])
 
-    encoder = LSTM2VecEncoder(
+    encoder = Lstm2VecEncoder(
         embedder=embedders,
         hidden_dim=HIDDEN_DIM,
         bidirectional=BIDIRECTIONAL,

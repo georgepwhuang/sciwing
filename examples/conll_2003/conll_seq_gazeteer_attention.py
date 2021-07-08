@@ -3,12 +3,10 @@ import sciwing.constants as constants
 import pathlib
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.modules.embedders.trainable_word_embedder import TrainableWordEmbedder
-from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
-from sciwing.modules.embedders.elmo_embedder import ElmoEmbedder
 from sciwing.modules.attentions.dot_product_attention import DotProductAttention
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
-from sciwing.modules.lstm2seq_attncontext_encoder import Lstm2SeqAttnContextEncoder
-from sciwing.models.rnn_seq_crf_tagger import RnnSeqCrfTagger
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.encoders.lstm2seq_attncontext_encoder import Lstm2SeqAttnContextEncoder
+from sciwing.modules.deployment.rnn_seq_crf_tagger import RnnSeqCrfTagger
 import argparse
 import wasabi
 import torch

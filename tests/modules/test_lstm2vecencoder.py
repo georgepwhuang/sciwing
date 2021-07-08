@@ -1,7 +1,5 @@
 import pytest
-import torch
-import torch.nn as nn
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.data.line import Line
 import itertools
@@ -20,7 +18,7 @@ def setup_lstm2vecencoder(request):
     bidirectional = request.param[0]
     embedder = WordEmbedder(embedding_type="glove_6B_50")
 
-    encoder = LSTM2VecEncoder(
+    encoder = Lstm2VecEncoder(
         embedder=embedder,
         dropout_value=0.0,
         hidden_dim=hidden_dimension,
@@ -52,7 +50,7 @@ class TestLstm2VecEncoder:
     def test_raises_error_on_wrong_combine_strategy(self, setup_lstm2vecencoder):
         with pytest.raises(AssertionError):
 
-            encoder = LSTM2VecEncoder(
+            encoder = Lstm2VecEncoder(
                 embedder=WordEmbedder("glove_6B_50"), combine_strategy="add"
             )
 

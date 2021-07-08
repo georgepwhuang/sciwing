@@ -16,7 +16,7 @@ router = APIRouter()
 
 sectlabel_model = None
 pdf_store = PdfStore(PDF_CACHE_DIR)
-PDF_BOX_JAR = BIN_FOLDER.joinpath("pdfbox-app-2.0.16.jar")
+PDF_BOX_JAR = BIN_FOLDER.joinpath("pdfbox-app-2.0.24.jar")
 
 
 @router.post("/sectlabel/uploadfile/")

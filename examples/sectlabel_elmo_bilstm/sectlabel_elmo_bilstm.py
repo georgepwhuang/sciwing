@@ -4,8 +4,8 @@ from sciwing.datasets.classification.text_classification_dataset import (
 from sciwing.modules.embedders.bow_elmo_embedder import BowElmoEmbedder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 import pathlib
 from sciwing.metrics.precision_recall_fmeasure import PrecisionRecallFMeasure
 import torch.optim as optim
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # concat the embeddings
     embedder = ConcatEmbedders([vanilla_embedder, elmo_embedder])
 
-    encoder = LSTM2VecEncoder(
+    encoder = Lstm2VecEncoder(
         embedder=embedder,
         hidden_dim=args.hidden_dim,
         bidirectional=args.bidirectional,

@@ -1,6 +1,5 @@
-import numpy as np
 import pytest
-from sciwing.modules.bow_encoder import BOW_Encoder
+from sciwing.modules.encoders.bow_encoder import BOW_Encoder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.data.line import Line
 from sciwing.utils.class_nursery import ClassNursery

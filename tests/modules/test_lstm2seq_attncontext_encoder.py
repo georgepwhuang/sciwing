@@ -1,6 +1,6 @@
 import pytest
-from sciwing.modules.lstm2seq_attncontext_encoder import Lstm2SeqAttnContextEncoder
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.encoders.lstm2seq_attncontext_encoder import Lstm2SeqAttnContextEncoder
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
 from sciwing.modules.attentions.dot_product_attention import DotProductAttention
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.data.contextual_lines import LineWithContext

@@ -5,13 +5,13 @@ from sciwing.datasets.classification.text_classification_dataset import (
 from sciwing.modules.embedders.bow_elmo_embedder import BowElmoEmbedder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.infer.classification.classification_inference import (
     ClassificationInference,
 )
 from sciwing.api.utils.pdf_reader import PdfReader
-from sciwing.utils.common import cached_path, chunks
+from sciwing.utils.common import chunks
 from sciwing.cli.sciwing_interact import SciWINGInteract
 import pathlib
 import json
@@ -93,7 +93,7 @@ class SectLabel:
         bidirectional = self.hparams.get("bidirectional")
         combine_strategy = self.hparams.get("combine_strategy")
 
-        encoder = LSTM2VecEncoder(
+        encoder = Lstm2VecEncoder(
             embedder=embedder,
             hidden_dim=hidden_dim,
             bidirectional=bidirectional,

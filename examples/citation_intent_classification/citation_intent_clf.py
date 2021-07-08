@@ -1,8 +1,8 @@
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.modules.embedders.elmo_embedder import ElmoEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     elmo_embedder = ElmoEmbedder(device=args.device)
 
     embedder = ConcatEmbedders([word_embedder, elmo_embedder])
-    encoder = LSTM2VecEncoder(
+    encoder = Lstm2VecEncoder(
         embedder=embedder,
         hidden_dim=args.hidden_dim,
         combine_strategy=args.combine_strategy,

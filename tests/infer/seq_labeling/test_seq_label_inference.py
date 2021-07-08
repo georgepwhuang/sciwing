@@ -5,10 +5,10 @@ from sciwing.datasets.seq_labeling.seq_labelling_dataset import (
     SeqLabellingDatasetManager,
 )
 from sciwing.modules.embedders.word_embedder import WordEmbedder
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
 from sciwing.modules.embedders.char_embedder import CharEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
-from sciwing.models.rnn_seq_crf_tagger import RnnSeqCrfTagger
+from sciwing.modules.deployment.rnn_seq_crf_tagger import RnnSeqCrfTagger
 from sciwing.metrics.token_cls_accuracy import TokenClassificationAccuracy
 from sciwing.engine.engine import Engine
 from sciwing.infer.seq_label_inference.seq_label_inference import (

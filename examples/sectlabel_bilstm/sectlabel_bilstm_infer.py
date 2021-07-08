@@ -1,8 +1,7 @@
-import os
 import sciwing.constants as constants
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.infer.classification.classification_inference import (
     ClassificationInference,
 )
@@ -37,7 +36,7 @@ def build_sectlabel_bilstm_model(dirname: str):
 
     embedder = WordEmbedder(embedding_type="glove_6B_50")
 
-    encoder = LSTM2VecEncoder(
+    encoder = Lstm2VecEncoder(
         embedder=embedder,
         hidden_dim=HIDDEN_DIM,
         combine_strategy=COMBINE_STRATEGY,

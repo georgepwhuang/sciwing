@@ -1,8 +1,8 @@
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 import sciwing.constants as constants
 from sciwing.metrics.precision_recall_fmeasure import PrecisionRecallFMeasure
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     )
 
     embedder = WordEmbedder(embedding_type=args.emb_type, device=args.device)
-    encoder = LSTM2VecEncoder(
+    encoder = Lstm2VecEncoder(
         embedder=embedder,
         hidden_dim=args.hidden_dim,
         combine_strategy=args.combine_strategy,

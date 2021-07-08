@@ -3,8 +3,8 @@ from sciwing.infer.classification.classification_inference import (
     ClassificationInference,
 )
 from sciwing.modules.embedders.bow_elmo_embedder import BowElmoEmbedder
-from sciwing.modules.bow_encoder import BOW_Encoder
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.encoders.bow_encoder import BOW_Encoder
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )

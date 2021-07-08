@@ -3,9 +3,9 @@ from sciwing.infer.classification.classification_inference import (
     ClassificationInference,
 )
 from sciwing.infer.interface_client_base import BaseInterfaceClient
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.modules.embedders.word_embedder import WordEmbedder
-from sciwing.modules.bow_encoder import BOW_Encoder
+from sciwing.modules.encoders.bow_encoder import BOW_Encoder
 from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )

@@ -4,11 +4,11 @@ import sciwing.constants as constants
 from sciwing.modules.embedders.word_embedder import WordEmbedder
 from sciwing.modules.embedders.elmo_embedder import ElmoEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
-from sciwing.modules.lstm2vecencoder import LSTM2VecEncoder
+from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
 from sciwing.datasets.classification.text_classification_dataset import (
     TextClassificationDatasetManager,
 )
-from sciwing.models.simpleclassifier import SimpleClassifier
+from sciwing.modules.deployment.simpleclassifier import SimpleClassifier
 from sciwing.infer.classification.classification_inference import (
     ClassificationInference,
 )
@@ -86,7 +86,7 @@ class CitationIntentClassification(nn.Module):
         combine_strategy = self.hparams.get("combine_strategy")
         bidirectional = self.hparams.get("bidirectional")
 
-        encoder = LSTM2VecEncoder(
+        encoder = Lstm2VecEncoder(
             embedder=embedder,
             hidden_dim=hidden_dim,
             combine_strategy=combine_strategy,

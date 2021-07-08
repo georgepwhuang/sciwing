@@ -5,9 +5,8 @@ import sciwing.constants as constants
 from sciwing.modules.embedders.trainable_word_embedder import TrainableWordEmbedder
 from sciwing.modules.embedders.concat_embedders import ConcatEmbedders
 from sciwing.datasets.seq_labeling.conll_dataset import CoNLLDatasetManager
-from sciwing.modules.lstm2seqencoder import Lstm2SeqEncoder
-from sciwing.models.rnn_seq_crf_tagger import RnnSeqCrfTagger
-from sciwing.cli.sciwing_interact import SciWINGInteract
+from sciwing.modules.encoders.lstm2seqencoder import Lstm2SeqEncoder
+from sciwing.modules.deployment.rnn_seq_crf_tagger import RnnSeqCrfTagger
 import pathlib
 from sciwing.infer.seq_label_inference.conll_inference import Conll2003Inference
 
