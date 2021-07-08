@@ -4,9 +4,9 @@ from sciwing.utils.class_nursery import ClassNursery
 
 
 class MultiHeadAttention(nn.Module, ClassNursery):
-    def __init__(self, embed_dim: int, num_heads=8):
+    def __init__(self, encode_dim: int, num_heads=8):
         super(MultiHeadAttention, self).__init__()
-        self.attention = nn.MultiheadAttention(embed_dim=embed_dim, num_heads=num_heads, batch_first=True)
+        self.attention = nn.MultiheadAttention(embed_dim=encode_dim, num_heads=num_heads)
 
     def forward(
         self, query_matrix: torch.Tensor, key_matrix: torch.Tensor, to_seq: bool = False
@@ -38,11 +38,13 @@ class MultiHeadAttention(nn.Module, ClassNursery):
 
             for i in range(times):
                 query = query_matrix[:, i, :]
-                key = key_matrix [:, i, :, :]
-                attention = self.get_attention_weight(query_matrix, key_matrix)
+                query = query.transpose(0, 1)
+                key = key_matrix[:, i, :, :]
+                key = key.transpose(0, 1)
+                attention = self.get_attention_weight(query, key)
                 attention_list.append(attention)
 
-            attention = torch.stack(attention_list, dim = 1)
+            attention = torch.stack(attention_list, dim=1)
 
         else:
             # (batch_size, max_number_of_time_steps)
@@ -51,8 +53,12 @@ class MultiHeadAttention(nn.Module, ClassNursery):
         return attention
 
     def get_attention_weight(self, query, key):
-        # (batch_size, 1, hidden_dimension)
+        # (1, batch_size, hidden_dimension)
         query = query.unsqueeze(-2)
+        query = query.transpose(0, 1)
+
+        # (max_number_time_steps, batch_size, hidden_dimension)
+        key = key.transpose(0, 1)
 
         # (batch_size, 1, max_number_time_steps)
         _, attention = self.attention.forward(query, key, key)
