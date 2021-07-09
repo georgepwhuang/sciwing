@@ -191,14 +191,14 @@ class BertEmbedder(nn.Module, BaseEmbedder, ClassNursery):
             assert len(encoded_layers) == 24
 
         # num_bert_layers, batch_size, max_len_bert + 2, bert_hidden_dimension
-        all_layers = torch.stack(encoded_layers, dim=0)
+        last_four_layers = torch.stack(encoded_layers[-4:], dim=0)
 
         # batch_size, max_len_bert + 2, bert_hidden_dimension
         if self.aggregation_type == "sum":
-            encoding = torch.sum(all_layers, dim=0)
+            encoding = torch.sum(last_four_layers, dim=0)
 
         elif self.aggregation_type == "average":
-            encoding = torch.mean(all_layers, dim=0)
+            encoding = torch.mean(last_four_layers, dim=0)
         else:
             raise ValueError(f"The aggregation type {self.aggregation_type}")
 
@@ -234,9 +234,8 @@ class BertEmbedder(nn.Module, BaseEmbedder, ClassNursery):
                 sub_tokens = token.sub_tokens
                 len_sub_tokens = len(sub_tokens)
 
-                # taking the embedding of only the first token
-                # TODO: Have different strategies for this
-                emb = token_embeddings[idx]
+                # taking the sum of subtoken embeddings
+                emb = torch.sum(token_embeddings[idx: idx+len_sub_tokens], dim=0)
                 line_embeddings.append(emb)
                 token.set_embedding(name=self.embedder_name, value=emb)
                 idx += len_sub_tokens
