@@ -4,6 +4,7 @@ from sciwing.data.contextual_lines import LineWithContext
 from sciwing.modules.encoders.lstm2vecencoder import Lstm2VecEncoder
 from typing import List, Union
 import torch
+import itertools
 
 
 class Emb2VecAttnContextEncoder(nn.Module, ClassNursery):
@@ -39,34 +40,36 @@ class Emb2VecAttnContextEncoder(nn.Module, ClassNursery):
         self.device = device
 
     def forward(self, lines: List[LineWithContext]) -> torch.Tensor:
-        main_lines = []
-        for line in lines:
-            main_lines.append(line.line)
+        main_lines = [line.lines for line in lines]
 
         # batch_size, hidden_dimension
         main_encoding = self.main_encoder(lines=main_lines)
 
-        # batch_size, max_num_context_lines, hidden_dimension
+        processed_context_encodings = []
+
+        # batch_size * max_num_context_lines, hidden_dimension
         max_num_context_lines = max([len(line.context_lines) for line in lines])
-        context_encoding = []
-        for line in lines:
-            context_lines = line.context_lines
-            num_context_lines = len(context_lines)
-            encoding = self.context_encoder(lines=context_lines)
+        context_size = [len(line.context_lines) for line in lines]
+        context_lines = [len(line.context_lines) for line in lines]
+        context_lines = list(itertools.chain.from_iterable(context_lines))
+        context_encodings = self.context_encoder(lines=context_lines)
+        context_encodings_list = torch.split(context_encodings, context_size)
+
+        for context_encoding, num_context_lines in zip(context_encodings_list, context_size):
             # num_context_lines, embedding_dimension
-            emb_dim = encoding.size(1)
+            emb_dim = context_encoding.size(1)
 
             # adding zeros for padding
             padding_length = max_num_context_lines - num_context_lines
             zeros = torch.randn(padding_length, emb_dim, device=self.device)
 
-            encoding = torch.cat([encoding, zeros], dim=0)
-            context_encoding.append(encoding)
+            context_encoding = torch.cat([context_encoding, zeros], dim=0)
+            processed_context_encodings.append(context_encoding)
 
-        context_encoding = torch.stack(context_encoding)
+        processed_context_encodings = torch.stack(processed_context_encodings)
 
         # batch_size, number_of_context_lines
-        attn = self.attn_module(query_matrix=main_encoding, key_matrix=context_encoding)
+        attn = self.attn_module(query_matrix=main_encoding, key_matrix=processed_context_encodings)
 
         attn_unsqueeze = attn.unsqueeze(1)
 

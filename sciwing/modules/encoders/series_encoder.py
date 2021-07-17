@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 from typing import List, Union
+import itertools
+
+from sciwing.data.doc_lines import DocLines
 from sciwing.utils.class_nursery import ClassNursery
-from sciwing.data.line import Line
-from sciwing.data.datasets_manager import DatasetsManager
-from sciwing.modules.attentions.dot_product_attention import DotProductAttention
 
 
 class SeriesEncoder(nn.Module, ClassNursery):
@@ -12,11 +12,10 @@ class SeriesEncoder(nn.Module, ClassNursery):
         self,
         encoder: nn.Module,
         secondary_encoder: nn.Module = None,
-        attention: nn.Module = DotProductAttention(),
+        attention: nn.Module = None,
         attention_type: str = None,
-        window_size: int = 1,
-        dilution_gap_size: int = 0,
-        datasets_manager: DatasetsManager = None,
+        window_size: int = 3,
+        dilution_gap: int = 0,
         device: Union[torch.device, str] = torch.device("cpu"),
     ):
         """ Generate.
@@ -31,25 +30,25 @@ class SeriesEncoder(nn.Module, ClassNursery):
             The following choices are offered: "sliding", "global"
         window_size: int
             Only used when attention_type is "sliding"
-        dilution_gap_size: int
+        dilution_gap: int
             Only used when attention_type is "sliding"
         """
         super(SeriesEncoder, self).__init__()
         self.encoder = encoder
         self.secondary_encoder = secondary_encoder
-        self.datasets_manager = datasets_manager
         self.attention = attention
         self.attention_type = attention_type
-        self.window_size = window_size
-        self.dilution_gap_size = dilution_gap_size + 1
+        self.window_size = int((window_size - 1) / 2.0)
+        self.dilution_gap = dilution_gap + 1
+        self.overlap = self.window_size * self.dilution_gap
         self.device = device
 
-    def forward(self, lines: List[List[Line]]):
+    def forward(self, lines: List[DocLines]):
         """
 
         Parameters
         ----------
-        lines : List[List[Line]]
+        lines : List[DocLines]
            A list of documents comprised of list of lines.
 
         Returns
@@ -61,45 +60,59 @@ class SeriesEncoder(nn.Module, ClassNursery):
             where the ``hidden_dimension`` twice the original
 
         """
-        encodings = []
-        for doc in lines:
-            # num_lines, hidden_dimension for lstm2vec
-            # num_lines, seq_len, hidden_dimension for lstm2seq
-            query = self.encoder(doc)
 
-            # num_lines, context_lines, hidden_dimension for lstm2vec
-            # num_lines, seq_len, context_lines, hidden_dimension for lstm2seq
-            if self.attention:
-                if self.secondary_encoder:
-                    secondary_encoding = self.secondary_encoder(doc)
-                else:
-                    secondary_encoding = query
+        if bool(self.attention) and self.attention_type == "sliding":
+            encodings = []
+            main_size = [len(doc.lines) for doc in lines]
+            begin_size = [len(doc.begin) for doc in lines]
+            end_size = [len(doc.end) for doc in lines]
 
-                if self.attention == "sliding":
-                    dimensions = secondary_encoding.size()
-                    key_list = []
-                    for i in range(-self.window_size * self.diluation_gap_size, 0, self.diluation_gap_size):
-                        size = [int(abs(i))].extend(dimensions[1:])
-                        zeros = torch.randn(size, device=self.device)
-                        encoding = torch.cat([zeros, secondary_encoding[:-self.window_size * self.diluation_gap_size]],
-                                             dim=0)
-                        key_list.append(encoding)
-                    for i in range(0, (self.window_size + 1) * self.diluation_gap_size, self.diluation_gap_size):
-                        size = [int(abs(i))].extend(dimensions[1:])
-                        zeros = torch.randn(size, device=self.device)
-                        encoding = torch.cat([secondary_encoding[self.window_size * self.diluation_gap_size:], zeros],
-                                             dim=0)
-                        key_list.append(encoding)
-                    key = torch.stack(key_list, dim=-2)
-                elif self.attention == "global":
-                    key = query.unsqueeze(-2)
-                    dimensions = [-1] * len(key.size())
-                    dimensions[-2] = len(doc)
-                    key = query.expand(dimensions)
+            main_lines = [doc.lines for doc in lines]
+            begin_lines = [doc.begin for doc in lines]
+            end_lines = [doc.end for doc in lines]
+
+            main_lines = list(itertools.chain.from_iterable(main_lines))
+            begin_lines = list(itertools.chain.from_iterable(begin_lines))
+            end_lines = list(itertools.chain.from_iterable(end_lines))
+
+            # batch * num_lines, hidden_dimension for lstm2vec
+            # batch * num_lines, seq_len, hidden_dimension for lstm2seq
+            main_encodings = self.encoder(main_lines)
+
+            # batch * num_lines, context_lines, hidden_dimension for lstm2vec
+            # batch * num_lines, seq_len, context_lines, hidden_dimension for lstm2seq
+            if self.secondary_encoder:
+                secondary_encodings = self.secondary_encoder(main_lines)
+                begin_encodings = self.secondary_encoder(begin_lines)
+                end_encodings = self.secondary_encoder(end_lines)
+            else:
+                secondary_encodings = main_encodings
+                begin_encodings = self.encoder(begin_lines)
+                end_encodings = self.encoder(end_lines)
+
+            main_encodings_list = torch.split(main_encodings, main_size)
+            secondary_encoding_list = torch.split(secondary_encodings, main_size)
+            begin_encodings_list = torch.split(begin_encodings, begin_size)
+            end_encodings_list = torch.split(end_encodings, end_size)
+
+            for main_encoding, secondary_encoding, begin_encoding, end_encoding in \
+                    zip(main_encodings_list, secondary_encoding_list, begin_encodings_list, end_encodings_list):
+                # num_lines, context_lines, hidden_dimension for lstm2vec
+                # num_lines, seq_len, context_lines, hidden_dimension for lstm2seq
+                key_list = []
+                for i in range(-self.overlap, 0, self.dilution_gap):
+                    encoding = torch.cat([begin_encoding[i:], secondary_encoding[:i]],
+                                         dim=0)
+                    key_list.append(encoding)
+                for i in range(self.dilution_gap, self.overlap + self.dilution_gap, self.dilution_gap):
+                    encoding = torch.cat([secondary_encoding[i:], end_encoding[:i]],
+                                         dim=0)
+                    key_list.append(encoding)
+                key = torch.stack(key_list, dim=-2)
 
                 # num_lines, context_lines for lstm2vec
                 # num_lines, seq_len, context_lines for lstm2seq
-                attn = self.attention(query_matrix=query, key_matrix=key)
+                attn = self.attention(query_matrix=main_encoding, key_matrix=key)
 
                 attn_unsqueeze = attn.unsqueeze(-2)
 
@@ -109,14 +122,42 @@ class SeriesEncoder(nn.Module, ClassNursery):
 
                 # num_lines, hidden_dimension for lstm2vec
                 # num_lines, seq_len, hidden_dimension for lstm2seq
-                attn_encoding = attn_encoding.squeeze(1)
-                encoding = torch.cat([query, attn_encoding])
+                attn_encoding = attn_encoding.squeeze(-2)
+                encoding = torch.cat([main_encoding, attn_encoding], dim=-1)
                 encodings.append(encoding)
 
-            else:
-                encodings.append(query)
+            # batch_size * num_lines, hidden_dimension for lstm2vec
+            # batch_size * num_lines, seq_len, hidden_dimension for lstm2seq
+            final_encoding = torch.cat(encodings, dim=0)
 
-        # batch_size * num_lines, hidden_dimension for lstm2vec
-        # batch_size * num_lines, seq_len, hidden_dimension for lstm2seq
-        final_encoding = torch.cat(encodings, dim=0)
+        elif bool(self.attention) and self.attention_type == "global":
+            encodings = []
+            main_lines = [doc.lines for doc in lines]
+            main_lines = list(itertools.chain.from_iterable(main_lines))
+            main_encodings = self.encoder(main_lines)
+            main_size = [len(doc.lines) for doc in lines]
+            main_encodings_list = torch.split(main_encodings, main_size)
+            for query, num_lines in zip(main_encodings_list, main_size):
+                key = query.unsqueeze(-2)
+                dimensions = [-1] * len(key.size())
+                dimensions[-2] = num_lines
+                key = query.expand(dimensions)
+                attn = self.attention(query_matrix=query, key_matrix=key)
+                attn_unsqueeze = attn.unsqueeze(-2)
+
+                # num_lines, 1, hidden_dimension for lstm2vec
+                # num_lines, seq_len, 1, hidden_dimension for lstm2seq
+                attn_encoding = torch.matmul(attn_unsqueeze, key)
+
+                # num_lines, hidden_dimension for lstm2vec
+                # num_lines, seq_len, hidden_dimension for lstm2seq
+                attn_encoding = attn_encoding.squeeze(-2)
+                encoding = torch.cat([query, attn_encoding], dim=-1)
+                encodings.append(encoding)
+            final_encoding = torch.cat(encodings, dim=0)
+
+        else:
+            main_lines = [doc.lines for doc in lines]
+            main_lines = list(itertools.chain.from_iterable(main_lines))
+            final_encoding = self.encoder(main_lines)
         return final_encoding

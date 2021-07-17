@@ -1,5 +1,6 @@
 import sciwing.constants as constants
-from sciwing.metrics.precision_recall_fmeasure import PrecisionRecallFMeasure
+from sciwing.data.doc_labels import DocLabels
+from sciwing.data.doc_lines import DocLines
 from sciwing.infer.classification.BaseClassificationInference import (
     BaseClassificationInference,
 )
@@ -8,17 +9,17 @@ from deprecated import deprecated
 from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 import pandas as pd
-from sciwing.data.contextual_lines import LineWithContext
-from sciwing.data.label import Label
 from wasabi.util import MESSAGES
+from sciwing.metrics.precision_recall_fmeasure_for_doc import PrecisionRecallFMeasureForDoc
+import itertools
 
 FILES = constants.FILES
 SECT_LABEL_FILE = FILES["SECT_LABEL_FILE"]
 
 
-class ClassificationWithAttentionInference(BaseClassificationInference):
+class DocumentClassificationInference(BaseClassificationInference):
     """
     The sciwing engine runs the test lines through the classifier
     and returns the predictions/probabilities for different classes
@@ -44,15 +45,17 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
         tokens_namespace: str = "tokens",
         normalized_probs_namespace: str = "normalized_probs",
         device: str = "cpu",
+        window_size: int = 3,
+        dilution_gap: int = 0
     ):
 
-        super(ClassificationWithAttentionInference, self).__init__(
+        super(DocumentClassificationInference, self).__init__(
             model=model,
             model_filepath=model_filepath,
             datasets_manager=datasets_manager,
             device=device,
         )
-        self.batch_size = 64
+        self.batch_size = 1
         self.tokens_namespace = tokens_namespace
         self.normalized_probs_namespace = normalized_probs_namespace
         self.label_namespace = self.datasets_manager.label_namespaces[0]
@@ -66,13 +69,15 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
 
         self.load_model()
 
-        self.metrics_calculator = PrecisionRecallFMeasure(
+        self.metrics_calculator = PrecisionRecallFMeasureForDoc(
             datasets_manager=datasets_manager
         )
         self.output_analytics = None
 
         # create a dataframe with all the information
         self.output_df = None
+
+        self.overlap = int((window_size - 1) / 2.0) * (dilution_gap + 1)
 
     def run_inference(self) -> Dict[str, Any]:
 
@@ -89,7 +94,6 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
             pred_class_names = []
             true_class_names = []  # contains the true class names for all the instances
             sentences = []  # batch sentences in english
-            context = []
             true_labels_indices = []
             predicted_labels_indices = []
             all_pred_probs = []
@@ -97,18 +101,17 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
 
             for lines_labels in loader:
                 lines_labels = list(zip(*lines_labels))
-                lines = lines_labels[0]
-                labels = lines_labels[1]
-
-                batch_sentences = [line.text for line in lines]
-                batch_context = [line.context for line in lines]
-                model_output_dict = self.model_forward_on_lines(lines=lines)
+                doc_lines = lines_labels[0]
+                doc_labels = lines_labels[1]
+                batch_sentences = [[line.text for line in doc_line.lines] for doc_line in doc_lines]
+                batch_sentences = list(itertools.chain().from_iterable(batch_sentences))
+                model_output_dict = self.model_forward_on_lines(lines=doc_lines)
                 normalized_probs = model_output_dict[self.normalized_probs_namespace]
                 self.metrics_calculator.calc_metric(
-                    lines=lines, labels=labels, model_forward_dict=model_output_dict
+                    lines=doc_lines, labels=doc_labels, model_forward_dict=model_output_dict
                 )
                 true_label_ind, true_label_names = self.get_true_label_indices_names(
-                    labels=labels
+                    labels=doc_labels
                 )
                 (
                     pred_label_indices,
@@ -123,7 +126,6 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
                 predicted_labels_indices.extend(pred_label_indices)
                 pred_class_names.extend(pred_label_names)
                 sentences.extend(batch_sentences)
-                context.extend(batch_context)
                 all_pred_probs.append(normalized_probs)
 
             # contains predicted probs for all the instances
@@ -136,13 +138,12 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
             output_analytics["pred_class_names"] = pred_class_names
             output_analytics["true_class_names"] = true_class_names
             output_analytics["sentences"] = sentences
-            output_analytics["context"] = context
             output_analytics["all_pred_probs"] = all_pred_probs
 
         self.msg_printer.good(title="Finished running inference")
         return output_analytics
 
-    def model_forward_on_lines(self, lines: List[LineWithContext]):
+    def model_forward_on_lines(self, lines: List[DocLines]):
         with torch.no_grad():
             model_output_dict = self.model(
                 lines=lines, is_training=False, is_validation=False, is_test=True
@@ -175,12 +176,10 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
 
         for idx in instances_idx:
             sentence = self.output_analytics["sentences"][idx]
-            context = self.output_analytics["context"][idx]
 
             if true_label_idx != pred_label_idx:
                 stylized_sentence = self.msg_printer.text(
                     title=sentence,
-                    text=context[0] + sentence + context[1],
                     icon=MESSAGES.FAIL,
                     color=MESSAGES.FAIL,
                     no_print=True,
@@ -188,7 +187,6 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
             else:
                 stylized_sentence = self.msg_printer.text(
                     title=sentence,
-                    text=context[0] + sentence + context[1],
                     icon=MESSAGES.GOOD,
                     color=MESSAGES.GOOD,
                     no_print=True,
@@ -254,9 +252,10 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
             Returns the class names for all the sentences in the input
 
         """
-        lines = self.make_lines(lines=lines)
 
-        model_output_dict = self.model_forward_on_lines(lines=lines)
+        doclines = DocLines(lines=lines, begin=[], end=[], overlap=self.overlap, tokenizers=self.datasets_manager.train_dataset.tokenizers)
+
+        model_output_dict = self.model_forward_on_lines(lines=[doclines])
         _, pred_classnames = self.model_output_dict_to_prediction_indices_names(
             model_output_dict=model_output_dict
         )
@@ -280,9 +279,10 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
         return self.infer_batch(lines=[line])[0]
 
     def get_true_label_indices_names(
-        self, labels: List[Label]
+        self, labels: List[DocLabels]
     ) -> (List[int], List[str]):
-        label_names = [label.text for label in labels]
+        label_names = [[label.text for label in doc.labels] for doc in labels]
+        label_names = list(itertools.chain().from_iterable(label_names))
         label_indices = [
             self.labelname2idx_mapping[label_name] for label_name in label_names
         ]
@@ -293,23 +293,3 @@ class ClassificationWithAttentionInference(BaseClassificationInference):
         """
         self.output_analytics = self.run_inference()
         self.output_df = pd.DataFrame(self.output_analytics)
-
-    def make_lines(self, lines: List[str]):
-        """ Makes a line object from string, having some characteristics as the lines used
-        by the datasets
-
-        Parameters
-        ----------
-        lines : List[str]
-
-        Returns
-        -------
-        LineWithContext
-
-        """
-        lines = lines.copy()
-        lines.insert(0, "<<<begin>")
-        lines.append("<<<end>>>")
-        lines_ = [LineWithContext(text=lines[i], context=[lines[i-1], lines[i+1]],
-                                  tokenizers=self.datasets_manager.train_dataset.tokenizers) for i in range(1, len(lines) - 1)]
-        return lines_
