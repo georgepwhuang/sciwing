@@ -7,11 +7,10 @@ from sciwing.data.doc_lines import DocLines
 from sciwing.utils.class_nursery import ClassNursery
 
 
-class SeriesEncoder(nn.Module, ClassNursery):
+class AttnEncoder(nn.Module, ClassNursery):
     def __init__(
         self,
         encoder: nn.Module,
-        secondary_encoder: nn.Module = None,
         attention: nn.Module = None,
         attention_type: str = None,
         window_size: int = 3,
@@ -24,8 +23,6 @@ class SeriesEncoder(nn.Module, ClassNursery):
         ----------
         encoder : nn.Module
             A main encoder for sentence-level embeddings
-        secondary_encoder : nn.Module
-            A secondary encoder for sentence-level embeddings of neighboring lines
         attention_type : str
             The following choices are offered: "sliding", "global"
         window_size: int
@@ -33,9 +30,8 @@ class SeriesEncoder(nn.Module, ClassNursery):
         dilution_gap: int
             Only used when attention_type is "sliding"
         """
-        super(SeriesEncoder, self).__init__()
+        super(AttnEncoder, self).__init__()
         self.encoder = encoder
-        self.secondary_encoder = secondary_encoder
         self.attention = attention
         self.attention_type = attention_type
         self.window_size = int((window_size - 1) / 2.0)
@@ -75,38 +71,29 @@ class SeriesEncoder(nn.Module, ClassNursery):
             begin_lines = list(itertools.chain.from_iterable(begin_lines))
             end_lines = list(itertools.chain.from_iterable(end_lines))
 
+            all_size = [len(main_lines), len(begin_lines), len(end_lines)]
+            all_lines = list(itertools.chain.from_iterable([main_lines, begin_lines, end_lines]))
+
             # batch * num_lines, hidden_dimension for lstm2vec
             # batch * num_lines, seq_len, hidden_dimension for lstm2seq
-            main_encodings = self.encoder(main_lines)
+            all_encodings = self.encoder(all_lines)
 
-            # batch * num_lines, context_lines, hidden_dimension for lstm2vec
-            # batch * num_lines, seq_len, context_lines, hidden_dimension for lstm2seq
-            if self.secondary_encoder:
-                secondary_encodings = self.secondary_encoder(main_lines)
-                begin_encodings = self.secondary_encoder(begin_lines)
-                end_encodings = self.secondary_encoder(end_lines)
-            else:
-                secondary_encodings = main_encodings
-                begin_encodings = self.encoder(begin_lines)
-                end_encodings = self.encoder(end_lines)
+            main_encodings, begin_encodings, end_encodings = torch.split(all_encodings, all_size)
 
             main_encodings_list = torch.split(main_encodings, main_size)
-            secondary_encoding_list = torch.split(secondary_encodings, main_size)
             begin_encodings_list = torch.split(begin_encodings, begin_size)
             end_encodings_list = torch.split(end_encodings, end_size)
 
-            for main_encoding, secondary_encoding, begin_encoding, end_encoding in \
-                    zip(main_encodings_list, secondary_encoding_list, begin_encodings_list, end_encodings_list):
+            for main_encoding, begin_encoding, end_encoding in \
+                    zip(main_encodings_list, begin_encodings_list, end_encodings_list):
                 # num_lines, context_lines, hidden_dimension for lstm2vec
                 # num_lines, seq_len, context_lines, hidden_dimension for lstm2seq
                 key_list = []
                 for i in range(-self.overlap, 0, self.dilution_gap):
-                    encoding = torch.cat([begin_encoding[i:], secondary_encoding[:i]],
-                                         dim=0)
+                    encoding = torch.cat([begin_encoding[i:], main_encoding[:i]], dim=0)
                     key_list.append(encoding)
                 for i in range(self.dilution_gap, self.overlap + self.dilution_gap, self.dilution_gap):
-                    encoding = torch.cat([secondary_encoding[i:], end_encoding[:i]],
-                                         dim=0)
+                    encoding = torch.cat([main_encoding[i:], end_encoding[:i]], dim=0)
                     key_list.append(encoding)
                 key = torch.stack(key_list, dim=-2)
 

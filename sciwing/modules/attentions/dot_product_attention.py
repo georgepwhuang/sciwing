@@ -16,22 +16,22 @@ class DotProductAttention(nn.Module, ClassNursery):
         Parameters
         ----------
         query_matrix: torch.Tensor
-            Shape (batch_size, hidden_dimension)
+            Shape (batch_size, *, hidden_dimension)
         key_matrix: torch.Tensor
-            Shape (batch_size, max_number_of_time_steps, hidden_dimension)
+            Shape (batch_size, *, max_number_of_time_steps, hidden_dimension)
 
         Returns
         -------
         torch.Tensor
             The attention distribution over the keys
         """
-        # (batch_size, hidden_dimension, 1)
+        # (batch_size, *, hidden_dimension, 1)
         query_matrix_new_dimension = query_matrix.unsqueeze(-1)
 
-        # (batch_size, max_number_time_steps, 1)
+        # (batch_size, *, max_number_time_steps, 1)
         attention = torch.matmul(key_matrix, query_matrix_new_dimension)
 
-        # (batch_size, max_number_of_time_steps)
+        # (batch_size, *, max_number_of_time_steps)
         attention = attention.squeeze(-1)
 
         # convert to probabilities

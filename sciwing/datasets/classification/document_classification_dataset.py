@@ -59,14 +59,7 @@ class DocumentClassificationDataset(BaseTextClassification, Dataset):
                     labels.append(label)
                 else:
                     lines_read = len(lines)
-                    counter = 0
-                    while True:
-                        offset = random.randint(1, self.batch_size)
-                        if offset >= self.overlap and \
-                                (lines_read - offset) % self.batch_size >= self.overlap:
-                            break
-                        counter += 1
-                        assert counter < 10000, "Unable to partition batch"
+                    offset = self.generate_offset(lines_read)
                     doc_lines_batch = self.create_line_batch(lines, offset)
                     doc_labels_batch = self.create_label_batch(labels, offset)
                     doc_lines.extend(doc_lines_batch)
@@ -77,16 +70,15 @@ class DocumentClassificationDataset(BaseTextClassification, Dataset):
                     lines = []
                     labels = []
         if len(lines) > 0 and len(labels) > 0:
-            offset = random.randint(1, self.batch_size)
+            lines_read = len(lines)
+            offset = self.generate_offset(lines_read)
             doc_lines_batch = self.create_line_batch(lines, offset)
             doc_labels_batch = self.create_label_batch(labels, offset)
             doc_lines.extend(doc_lines_batch)
             doc_labels.extend(doc_labels_batch)
-            lines_read = len(lines)
             lines_batched = sum([len(doc.lines) for doc in doc_lines_batch])
             assert lines_read == lines_batched, \
                 f"Lines read ({lines_read}) and lines batched ({lines_batched})do not match"
-
         return doc_lines, doc_labels
 
     def create_line_batch(self, ls: List[str], offset: int) -> List[DocLines]:
@@ -102,7 +94,8 @@ class DocumentClassificationDataset(BaseTextClassification, Dataset):
                 end = ls[idx + self.batch_size: len(ls)]
             else:
                 end = ls[idx + self.batch_size: idx + self.batch_size + self.overlap]
-            doc_lines.append(DocLines(lines=lines, begin=begin, end=end, overlap=self.overlap, tokenizers=self.tokenizers))
+            doc_lines.append(DocLines(lines=lines, begin=begin, end=end,
+                                      overlap=self.overlap, tokenizers=self.tokenizers))
         return doc_lines
 
     def create_label_batch(self, ls: List[str], offset: int) -> List[DocLabels]:
@@ -113,6 +106,16 @@ class DocumentClassificationDataset(BaseTextClassification, Dataset):
             labels = ls[idx: idx + self.batch_size]
             doc_labels.append(DocLabels(labels=labels))
         return doc_labels
+
+    def generate_offset(self, length: int):
+        counter = 0
+        while True:
+            offset = random.randint(self.overlap, self.batch_size)
+            if (length - offset) % self.batch_size >= self.overlap:
+                break
+            counter += 1
+            assert counter < 10000, "Unable to partition batch"
+        return offset
 
     def __len__(self):
         return len(self.lines)

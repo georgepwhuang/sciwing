@@ -182,8 +182,7 @@ class BertEmbedder(nn.Module, BaseEmbedder, ClassNursery):
         tokens_tensor = tokens_tensor.to(self.device)
         segment_tensor = segment_tensor.to(self.device)
 
-        with torch.no_grad():
-            encoded_layers, _ = self.model(tokens_tensor, segment_tensor)
+        encoded_layers, _ = self.model(tokens_tensor, segment_tensor)
 
         if "base" in self.bert_type:
             assert len(encoded_layers) == 12
