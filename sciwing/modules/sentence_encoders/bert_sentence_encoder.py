@@ -1,15 +1,13 @@
 import torch
 import torch.nn as nn
-from sciwing.tokenizers.bert_tokenizer import TokenizerForBert
-from sciwing.numericalizers.transformer_numericalizer import NumericalizerForTransformer
 from sciwing.modules.attentions.multihead_attention import MultiHeadAttention
 from typing import List, Union
 import wasabi
 import sciwing.constants as constants
-from pytorch_pretrained_bert import BertModel
 from sciwing.utils.class_nursery import ClassNursery
 from sciwing.data.line import Line
-import os
+from transformers import AutoTokenizer
+from transformers import AutoModel
 
 PATHS = constants.PATHS
 EMBEDDING_CACHE_DIR = PATHS["EMBEDDING_CACHE_DIR"]
@@ -18,24 +16,38 @@ EMBEDDING_CACHE_DIR = PATHS["EMBEDDING_CACHE_DIR"]
 class BertSentenceEncoder(nn.Module, ClassNursery):
     def __init__(
         self,
-        dropout_value: float = 0.0,
+        dropout_value: float = 0.1,
         aggregation_type: str = "sum",
-        embedding_method: str = "CLS",
-        bert_type: str = "scibert-base-uncased",
+        layers: Union[str, List[int]] = "last_four",
+        embedding_method: str = "attn_pool",
+        transformer: str = "bert-base-cased",
         device: Union[torch.device, str] = torch.device("cpu"),
     ):
         super(BertSentenceEncoder, self).__init__()
 
         self.dropout_value = dropout_value
         self.aggregation_type = aggregation_type
+        if isinstance(layers, str):
+            if layers == "all":
+                self.layers = list(range(1, 13))
+            elif layers == "last_four":
+                self.layers = [9, 10, 11, 12]
+            elif layers == "last":
+                self.layers = [12]
+            elif layers == "second_to_last":
+                self.layers = [11]
+            else:
+                raise ValueError(f"The layer specification {layers} is not supported")
+        else:
+            self.layers = layers
         self.embedding_method = embedding_method
-        self.bert_type = bert_type
+        self.transformer = transformer
         if isinstance(device, str):
             self.device = torch.device(device)
         else:
             self.device = device
         self.msg_printer = wasabi.Printer()
-        self.embedder_name = bert_type
+        self.embedder_name = self.transformer
 
         self.scibert_foldername_mapping = {
             "scibert-base-cased": "scibert_basevocab_cased",
@@ -44,29 +56,23 @@ class BertSentenceEncoder(nn.Module, ClassNursery):
             "scibert-sci-uncased": "scibert_scivocab_uncased",
         }
 
-        if "scibert" in self.bert_type:
-            foldername = self.scibert_foldername_mapping[self.bert_type]
-            self.model_type_or_folder_url = os.path.join(
-                EMBEDDING_CACHE_DIR, foldername, "weights.tar.gz"
-            )
+        if self.transformer in self.scibert_foldername_mapping.keys():
+            foldername = self.scibert_foldername_mapping[self.transformer]
+            self.model_type_or_folder_url = "allenai/" + foldername
 
         else:
-            self.model_type_or_folder_url = self.bert_type
+            self.model_type_or_folder_url = self.transformer
 
         # load the bert model
         with self.msg_printer.loading(" Loading Bert tokenizer and model. "):
-            self.bert_tokenizer = TokenizerForBert(
-                bert_type=self.bert_type, do_basic_tokenize=False
-            )
-            self.bert_numericalizer = NumericalizerForTransformer(
-                tokenizer=self.bert_tokenizer
-            )
-            self.model = BertModel.from_pretrained(self.model_type_or_folder_url)
-            self.model.to(self.device)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_type_or_folder_url,
+                                                           use_fast=False,
+                                                           do_basic_tokenize=False)
+            self.model = AutoModel.from_pretrained(self.model_type_or_folder_url)
 
         self.attention = MultiHeadAttention(encode_dim=self.model.config.hidden_size)
 
-        self.msg_printer.good(f"Finished Loading {self.bert_type} model and tokenizer")
+        self.msg_printer.good(f"Finished Loading {self.transformer} model and tokenizer")
         self.dimension = self.get_dimension()
 
     def forward(self, lines: List[Line]) -> torch.Tensor:
@@ -86,66 +92,63 @@ class BertSentenceEncoder(nn.Module, ClassNursery):
         """
 
         # word_tokenize all the text string in the batch
-        bert_tokens_lengths = []
+        transformer_tokens_lengths = []
         for line in lines:
             text = line.text
-            bert_tokenized_text = self.bert_tokenizer.tokenize(text)
-            line.tokenizers[self.embedder_name] = self.bert_tokenizer
-            line.add_tokens(tokens=bert_tokenized_text, namespace=self.embedder_name)
-            bert_tokens_lengths.append(len(bert_tokenized_text))
+            tokenized_text = self.tokenizer.tokenize(text)
+            line.tokenizers[self.embedder_name] = self.tokenizer
+            line.add_tokens(tokens=tokenized_text, namespace=self.embedder_name)
+            transformer_tokens_lengths.append(len(tokenized_text))
+            assert len(tokenized_text) != 0, f"{line.text}"
 
-        max_len_bert = max(bert_tokens_lengths)
-        # pad the tokenized text to a maximum length
-        indexed_tokens = []
-        segment_ids = []
-        for line in lines:
-            bert_tokens = line.tokens[self.embedder_name]
-            tokens_numericalized = self.bert_numericalizer.numericalize_instance(
-                instance=bert_tokens
-            )
-            tokens_numericalized = self.bert_numericalizer.pad_instance(
-                numericalized_text=tokens_numericalized,
-                max_length=max_len_bert + 2,
-                add_start_end_token=True,
-            )
-            segment_numbers = [0] * len(tokens_numericalized)
+        tokenized_input = self.tokenizer([line.text for line in lines],
+                                         padding=True, truncation=True,
+                                         return_tensors="pt").to(self.device)
 
-            tokens_numericalized = torch.LongTensor(tokens_numericalized)
-            segment_numbers = torch.LongTensor(segment_numbers)
+        output = self.model(**tokenized_input, output_hidden_states=True)
 
-            indexed_tokens.append(tokens_numericalized)
-            segment_ids.append(segment_numbers)
+        encoded_layers = output.hidden_states
 
-        tokens_tensor = torch.stack(indexed_tokens)
-        segment_tensor = torch.stack(segment_ids)
-
-        tokens_tensor = tokens_tensor.to(self.device)
-        segment_tensor = segment_tensor.to(self.device)
-
-        encoded_layers, _ = self.model(tokens_tensor, segment_tensor)
-
-        if "base" in self.bert_type:
-            assert len(encoded_layers) == 12
-        elif "large" in self.bert_type:
-            assert len(encoded_layers) == 24
+        if "base" in self.transformer:
+            assert len(encoded_layers) == 13, f"{len(encoded_layers)}"
+        elif "large" in self.transformer:
+            assert len(encoded_layers) == 25, f"{len(encoded_layers)}"
 
         # batch_size, num_bert_layers, max_len_bert + 2, bert_hidden_dimension
-        last_four_layers = torch.stack(encoded_layers[-4:], dim=1)
+        filtered_layers = [encoded_layers[layer] for layer in self.layers]
+        filtered_layers = torch.stack(filtered_layers, dim=1)
 
         # batch_size, num_bert_layers, bert_hidden_dimension
         if self.embedding_method == "CLS":
-            sentence_encoding = last_four_layers[:, :, 0, :]
+            sentence_encoding = filtered_layers[:, :, 0, :]
         elif self.embedding_method == "mean_pool":
-            sentence_encoding = torch.mean(last_four_layers, dim=2)
+            sentence_encoding = filtered_layers
+            attention_mask = tokenized_input.attention_mask
+            input_mask_expanded = attention_mask.unsqueeze(1).unsqueeze(-1).expand(sentence_encoding.size()).float()
+            sum_embeddings = torch.sum(sentence_encoding * input_mask_expanded, dim=2)
+            sum_mask = torch.clamp(input_mask_expanded.sum(2), min=1e-9)
+            sentence_encoding = sum_embeddings / sum_mask
         elif self.embedding_method == "max_pool":
-            sentence_encoding = torch.max(last_four_layers, dim=2)
+            sentence_encoding = filtered_layers
+            attention_mask = tokenized_input.attention_mask
+            input_mask_expanded = attention_mask.unsqueeze(1).unsqueeze(-1).expand(sentence_encoding.size()).float()
+            sentence_encoding[input_mask_expanded == 0] = -1e9
+            sentence_encoding = torch.max(sentence_encoding, dim=2)
         elif self.embedding_method == "attn_pool":
-            query = last_four_layers[:, :, 0, :]
-            key = last_four_layers[:, :, 1:-1, :]
-            attn = self.attention(query_matrix=query, key_matrix=key, augmented=True)
-            attn_unsqueeze = attn.unsqueeze(-2)
-            attn_encoding = torch.matmul(attn_unsqueeze, key)
-            sentence_encoding = attn_encoding.squeeze(-2)
+            sentence_encoding = []
+            attention_mask = tokenized_input.attention_mask
+            for idx, embedding in enumerate(filtered_layers):
+                query = embedding[:, 0, :]
+                key = embedding[:, 1: transformer_tokens_lengths[idx] + 1, :]
+                assert transformer_tokens_lengths[idx] == int(torch.sum(attention_mask[idx])), \
+                    f'token count{transformer_tokens_lengths[idx]} and ' \
+                    f'attention mask {int(torch.sum(attention_mask[idx]))} does not match'
+                attn = self.attention(query_matrix=query, key_matrix=key)
+                attn_unsqueeze = attn.unsqueeze(-2)
+                attn_encoding = torch.matmul(attn_unsqueeze, key)
+                single_encoding = attn_encoding.squeeze(-2)
+                sentence_encoding.append(single_encoding)
+            sentence_encoding = torch.stack(sentence_encoding, dim=0)
         else:
             raise ValueError(f"The embedding type {self.embedding_method} does not exist")
 
@@ -163,6 +166,6 @@ class BertSentenceEncoder(nn.Module, ClassNursery):
 
     def get_dimension(self) -> int:
         if self.aggregation_type == "concat":
-            return self.model.config.hidden_size * 4
+            return self.model.config.hidden_size * len(self.layers)
         else:
             return self.model.config.hidden_size
