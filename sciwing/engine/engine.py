@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch.nn as nn
-import torch.optim as optim
+from torch.optim.optimizer import Optimizer
 from wasabi import Printer
 from typing import Iterator, Any, Optional, Dict, Union
 from sciwing.meters.loss_meter import LossMeter
@@ -31,7 +31,7 @@ class Engine(ClassNursery):
         self,
         model: nn.Module,
         datasets_manager: DatasetsManager,
-        optimizer: optim,
+        optimizer: Optimizer,
         batch_size: int,
         save_dir: str,
         num_epochs: int,
